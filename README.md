@@ -1,16 +1,27 @@
-# React + Vite
+# LinkPreview Pro
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack web application that generates rich link previews, manages collections, and provides API-based preview extraction.
 
-Currently, two official plugins are available:
+## 🚀 Features
+- User Authentication (Login / Register / Forgot Password)
+- Link Preview Generator (OG tags, metadata extraction)
+- Collections system for organizing links
+- API Key system for developers
+- Dashboard with saved previews
+- Email OTP system for password reset
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🛠 Tech Stack
+- Frontend: React + Vite
+- Backend: Node.js + Express
+- Database: Prisma (SQLite in dev / configurable in prod)
+- Authentication: JWT
+- Email: Nodemailer (SMTP / providers)
 
-## React Compiler
+## 🌐 Live Demo
+https://linkpreview-pro.onrender.com
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 📦 Setup (Local)
+```bash
+npm install
+npx prisma db push
+npm run dev:all
