@@ -103,7 +103,7 @@ app.use('/api/preview', publicRouter); // Public API using API Keys (Bearer toke
 // ─── SPA Fallback (production only) ─────────────────────────────────────────────
 // All non-API routes return index.html so React Router handles client-side routing.
 if (isProd) {
-  app.get('*', (req, res) => {
+  app.get('/*', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
   });
 } else {
