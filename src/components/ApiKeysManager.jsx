@@ -1,5 +1,6 @@
+// src/components/ApiKeysManager.jsx - Secure API Key management view
 import React, { useState, useEffect } from 'react';
-import { Key, Plus, Copy, Check, RefreshCw, Trash2, Calendar, Eye, EyeOff, ShieldAlert, X } from 'lucide-react';
+import { Key, Plus, Copy, Check, RefreshCw, Trash2, Calendar, ShieldAlert, X, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../api/client';
 
@@ -9,9 +10,12 @@ export default function ApiKeysManager() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
-  const [copiedId, setCopiedId] = useState(null);
-  const [revealedIds, setRevealedIds] = useState([]);
   
+  // Credentials modal for newly generated keys (shown only once)
+  const [rawSecretToken, setRawSecretToken] = useState(null);
+  const [rawSecretName, setRawSecretName] = useState('');
+  const [copiedRawSecret, setCopiedRawSecret] = useState(false);
+
   // Confirmation state
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [confirmRegenId, setConfirmRegenId] = useState(null);
@@ -39,25 +43,17 @@ export default function ApiKeysManager() {
 
     try {
       const newKey = await api.apiKeys.create(newKeyName.trim());
+      // Prepend key to list (it will render with maskedKey in list)
       setKeys((prev) => [newKey, ...prev]);
       setNewKeyName('');
       setCreateOpen(false);
+      
+      // Expose the raw secret key exactly once
+      setRawSecretToken(newKey.key);
+      setRawSecretName(newKey.name);
+      setCopiedRawSecret(false);
     } catch (err) {
       console.error('Failed to create API key:', err);
-    }
-  };
-
-  const handleCopyKey = (id, token) => {
-    navigator.clipboard.writeText(token);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const toggleRevealKey = (id) => {
-    if (revealedIds.includes(id)) {
-      setRevealedIds(revealedIds.filter((item) => item !== id));
-    } else {
-      setRevealedIds([...revealedIds, id]);
     }
   };
 
@@ -66,6 +62,11 @@ export default function ApiKeysManager() {
       const updated = await api.apiKeys.regenerate(id);
       setKeys((prev) => prev.map((k) => (k.id === id ? updated : k)));
       setConfirmRegenId(null);
+      
+      // Expose the regenerated raw secret key exactly once
+      setRawSecretToken(updated.key);
+      setRawSecretName(updated.name);
+      setCopiedRawSecret(false);
     } catch (err) {
       console.error('Failed to regenerate API key:', err);
     }
@@ -81,8 +82,15 @@ export default function ApiKeysManager() {
     }
   };
 
+  const handleCopyRawSecret = () => {
+    if (!rawSecretToken) return;
+    navigator.clipboard.writeText(rawSecretToken);
+    setCopiedRawSecret(true);
+    setTimeout(() => setCopiedRawSecret(false), 2000);
+  };
+
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 py-6">
       {/* View Header */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -105,7 +113,6 @@ export default function ApiKeysManager() {
             <div className="py-12 text-center text-zinc-500 text-xs">Loading API credentials...</div>
           ) : keys.length > 0 ? (
             keys.map((key) => {
-              const isRevealed = revealedIds.includes(key.id);
               const formattedDate = new Date(key.createdAt).toISOString().split('T')[0];
               const lastUsed = key.lastUsedAt ? new Date(key.lastUsedAt).toISOString().split('T')[0] : 'Never';
               
@@ -124,28 +131,13 @@ export default function ApiKeysManager() {
                     </div>
 
                     {/* Token display block */}
-                    <div className="flex items-center gap-2 max-w-md w-full p-1.5 px-3 rounded-xl bg-zinc-950 border border-white/5">
-                      <span className="font-mono text-xs text-blue-400/90 tracking-wide select-all truncate">
-                        {isRevealed ? key.key : `${key.key.slice(0, 8)}${'•'.repeat(16)}`}
+                    <div className="flex items-center gap-2 max-w-md w-full p-2 px-3.5 rounded-xl bg-zinc-950 border border-white/5">
+                      <span className="font-mono text-xs text-zinc-400 tracking-wide select-none truncate">
+                        {key.maskedKey}
                       </span>
-                      <div className="flex gap-1 ml-auto">
-                        <button
-                          onClick={() => toggleRevealKey(key.id)}
-                          className="p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                        >
-                          {isRevealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => handleCopyKey(key.id, key.key)}
-                          className="p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
-                        >
-                          {copiedId === key.id ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </button>
-                      </div>
+                      <span className="text-[9px] font-bold text-zinc-600 bg-zinc-900 border border-white/5 px-2 py-0.5 rounded ml-auto">
+                        READ-ONLY
+                      </span>
                     </div>
                   </div>
 
@@ -196,6 +188,75 @@ export default function ApiKeysManager() {
           )}
         </div>
       </div>
+
+      {/* SECURE KEY REVEAL POPUP MODAL (SHOWS EXACTLY ONCE) */}
+      <AnimatePresence>
+        {rawSecretToken && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-lg rounded-2xl border border-blue-500/20 bg-zinc-950 p-7 shadow-2xl z-10 space-y-5"
+            >
+              <div className="flex items-center gap-3 border-b border-white/5 pb-4">
+                <div className="h-10 w-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Save Your API Secret Key</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">Description: {rawSecretName}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Please copy this key now. For your security, <strong className="text-white">we will not show it to you again</strong> after you close this window.
+                </p>
+
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-zinc-900 border border-white/5 relative overflow-hidden mt-3">
+                  <span className="font-mono text-xs text-blue-400 tracking-wide select-all truncate max-w-[340px]">
+                    {rawSecretToken}
+                  </span>
+                  
+                  <button
+                    onClick={handleCopyRawSecret}
+                    className="ml-auto flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    {copiedRawSecret ? (
+                      <>
+                        <Check className="h-3 w-3" />
+                        <span>COPIED!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        <span>COPY KEY</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/5 flex justify-end">
+                <button
+                  onClick={() => setRawSecretToken(null)}
+                  className="px-5 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-xs font-semibold text-white border border-white/5 transition-colors cursor-pointer"
+                >
+                  I've Saved It
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* CREATE DIALOG MODAL LAYOVER */}
       <AnimatePresence>

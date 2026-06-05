@@ -3,6 +3,7 @@ import express from 'express';
 import prisma from '../db.js';
 import cache from '../cache.js';
 import { scrapeMetadata } from '../scraper.js';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -20,10 +21,11 @@ router.get('/', async (req, res, next) => {
     }
 
     const apiKeyToken = authHeader.slice(7).trim();
+    const hashedKey = crypto.createHash('sha256').update(apiKeyToken).digest('hex');
 
     // 2. Query key in database
     const apiKeyRecord = await prisma.apiKey.findUnique({
-      where: { key: apiKeyToken },
+      where: { key: hashedKey },
     });
 
     if (!apiKeyRecord) {

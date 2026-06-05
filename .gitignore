@@ -33,3 +33,8 @@ dist-ssr
 screenshots/
 puppeteer_profile/
 
+# Environment secrets — never commit these
+.env
+.env.local
+.env.production
+

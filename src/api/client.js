@@ -2,10 +2,15 @@
 const API_BASE = '/api';
 
 async function request(path, options = {}) {
+  const token = localStorage.getItem('token');
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -21,6 +26,41 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Authentication
+  auth: {
+    register: (name, email, password) => {
+      return request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, password }),
+      });
+    },
+    login: (email, password) => {
+      return request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+    },
+    me: () => request('/auth/me'),
+    requestPasswordReset: (email) => {
+      return request('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+    },
+    verifyResetToken: (email, token) => {
+      return request('/auth/verify-reset-token', {
+        method: 'POST',
+        body: JSON.stringify({ email, token }),
+      });
+    },
+    resetPassword: (email, token, newPassword) => {
+      return request('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, token, newPassword }),
+      });
+    },
+  },
+
   // Previews CRUD
   previews: {
     list: (params = {}) => {
